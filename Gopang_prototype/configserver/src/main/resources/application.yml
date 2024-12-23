@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: gopang-config
+  profiles:
+    active: git
+
+  cloud:
+    config:
+      server:
+        git:
+          uri: ${GIT_URI}
+          default-label: ${GIT_DEFAULT_LABEL:main}
+          username: ${GIT_USERNAME}
+          password: ${GIT_PASSWORD}
+        refresh-rate: 60
+
+server:
+  port: 8071
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      consume: b3
+      produce: b3_multi
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-server:9411/api/v2/spans
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  charset:
+    console: UTF-8

@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: gopang-gateway
+  profiles:
+    active: default
+  cloud:
+    config:
+      uri: http://configserver:8071
+      name: gopang-gateway
+
+logging:
+  level:
+    com.netflix: WARN
+    org.springframework.web: WARN
+    com.optimagrowth: DEBUG

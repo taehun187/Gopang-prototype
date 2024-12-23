@@ -1,0 +1,202 @@
+services:
+  database:
+    image: mariadb:latest
+    ports:
+      - "${DB_PORT}:3306"
+    networks:
+      backend:
+        aliases:
+          - "database"
+    environment:
+      MARIADB_DATABASE: "${DB_NAME}"
+      MARIADB_PASSWORD: "${DB_PASSWORD}"
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    ports:
+      - '2181:2181'
+    networks:
+      backend:
+        aliases:
+          - "zookeeper"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    ports:
+      - '9092:9092'
+    networks:
+      backend:
+        aliases:
+          - "kafka"
+    environment:
+      - KAFKA_BROKER_ID=${KAFKA_BROKER_ID}
+      - KAFKA_CFG_LISTENERS=${KAFKA_LISTENERS}
+      - KAFKA_CFG_ADVERTISED_LISTENERS=${KAFKA_ADVERTISED_LISTENERS}
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=${KAFKA_ZOOKEEPER_CONNECT}
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "${ZIPKIN_PORT}:9411"
+    networks:
+      backend:
+        aliases:
+          - "zipkin-server"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - discovery.type=single-node
+      - cluster.name=${ES_CLUSTER_NAME}
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=${ES_MEM}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata1:/usr/share/elasticsearch/data
+    ports:
+      - "${ES_PORT1}:9300"
+      - "${ES_PORT2}:9200"
+    networks:
+      backend:
+        aliases:
+          - "elasticsearch"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.7.0
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_URL: "http://elasticsearch:9300"
+    ports:
+      - "${KIBANA_PORT}:5601"
+    networks:
+      backend:
+        aliases:
+          - "kibana"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.7.0
+    container_name: logstash
+    command: logstash -f /etc/logstash/conf.d/logstash.conf
+    volumes:
+      - ./config:/etc/logstash/conf.d
+    ports:
+      - "${LOGSTASH_PORT}:6000"
+    networks:
+      backend:
+        aliases:
+          - "logstash"
+
+  gatewayserver:
+    image: gopang/gatewayserver:0.0.1-SNAPSHOT
+    ports:
+      - "${GATEWAY_PORT}:8072"
+    environment:
+      SERVER_PORT: "${GATEWAY_PORT}"
+      CONFIGSERVER_URI: "${CONFIG_SERVER_URI}"
+      EUREKASERVER_URI: "${EUREKA_SERVER_URI}"
+      EUREKASERVER_PORT: "${EUREKA_PORT}"
+      CONFIGSERVER_PORT: "${CONFIG_PORT}"
+    depends_on:
+      database:
+        condition: service_healthy
+      configserver:
+        condition: service_started
+      eurekaserver:
+        condition: service_started
+    networks:
+      backend:
+        aliases:
+          - "gatewayserver"
+
+  configserver:
+    image: gopang/configserver:0.0.1-SNAPSHOT
+    ports:
+      - "${CONFIG_PORT}:8071"
+    networks:
+      backend:
+        aliases:
+          - "configserver"
+
+  eurekaserver:
+    image: gopang/eurekaserver:0.0.1-SNAPSHOT
+    ports:
+      - "${EUREKA_PORT}:8070"
+    depends_on:
+      database:
+        condition: service_healthy
+      configserver:
+        condition: service_started
+    networks:
+      backend:
+        aliases:
+          - "eurekaserver"
+
+  gopangorders:
+    image: gopang/orderserver:0.0.2-SNAPSHOT
+    environment:
+      DATABASESERVER_PORT: "${DB_INTERNAL_PORT}"
+    depends_on:
+      database:
+        condition: service_healthy
+      configserver:
+        condition: service_started
+      kafka:
+        condition: service_started
+    ports:
+      - "${ORDERS_PORT}:8082"
+    networks:
+      - backend
+
+  gopangpayment:
+    image: gopang/paymentserver:0.0.1-SNAPSHOT
+    environment:
+      DATABASESERVER_PORT: "${DB_INTERNAL_PORT}"
+    depends_on:
+      database:
+        condition: service_healthy
+      configserver:
+        condition: service_started
+    ports:
+      - "${PAYMENT_PORT}:8083"
+    networks:
+      backend:
+        aliases:
+          - "gopangpayment"
+
+  gopangitems:
+    image: gopang/itemserver:0.0.1-SNAPSHOT
+    ports:
+      - "${ITEMS_PORT}:8081"
+    depends_on:
+      database:
+        condition: service_healthy
+      configserver:
+        condition: service_started
+    networks:
+      backend:
+        aliases:
+          - "itemserver"
+
+volumes:
+  esdata1:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge

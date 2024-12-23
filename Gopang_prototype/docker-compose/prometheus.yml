@@ -1,0 +1,57 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+         # - alertmanager: 9093
+
+rule_files:
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets:
+          - "localhost:9090"
+
+  - job_name: "zipkin"
+    static_configs:
+      - targets: [ 'zipkin-server:9411' ]
+
+  - job_name:  "gateway" # 수집하는 이름
+    metrics_path: "/actuator/prometheus" # 수집한 경로
+    scrape_interval: 15s # 수집할 주기
+    static_configs:
+      - targets: # 수집할 서버의 IP, PORT
+          - "gatewayserver:8072"
+
+  - job_name: "config" # 수집하는 이름
+    metrics_path: "/actuator/prometheus" # 수집한 경로
+    scrape_interval: 15s # 수집할 주기
+    static_configs:
+      - targets: # 수집할 서버의 IP, PORT
+          - "configserver:8071"
+  - job_name: "eureka" # 수집하는 이름
+    metrics_path: "/actuator/prometheus" # 수집한 경로
+    scrape_interval: 15s # 수집할 주기
+    static_configs:
+      - targets: # 수집할 서버의 IP, PORT
+          - "eurekaserver:8070"
+  - job_name: "order" # 수집하는 이름
+    metrics_path: "/actuator/prometheus" # 수집한 경로
+    scrape_interval: 15s # 수집할 주기
+    static_configs:
+      - targets: # 수집할 서버의 IP, PORT
+          - "gopangorders:8082"
+  - job_name: "payment" # 수집하는 이름
+    metrics_path: "/actuator/prometheus" # 수집한 경로
+    scrape_interval: 15s # 수집할 주기
+    static_configs:
+      - targets: # 수집할 서버의 IP, PORT
+          - "gopangpayment:8083"
+  - job_name: "item" # 수집하는 이름
+    metrics_path: "/actuator/prometheus" # 수집한 경로
+    scrape_interval: 15s # 수집할 주기
+    static_configs:
+      - targets: # 수집할 서버의 IP, PORT
+          - "gopangitems:8081"
