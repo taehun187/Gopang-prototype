@@ -17,9 +17,12 @@
    ![Zipkin](./resource/5.png)
 <br>
 
-
-   ![Zipkin](./resource/6.png)
+2. **Use TraceId**
+   ![Use TraceId](./resource/8.png)
 <br>
 
-   ![Zipkin](./resource/7.png)
+   ![Use TraceId](./resource/9.png)
+<br>
+
+   ![Use TraceId](./resource/7.png)
 <br>
